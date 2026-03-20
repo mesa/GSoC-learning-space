@@ -2,16 +2,23 @@
 
 ## Who I am
 
-I am a Computer Application student with a minor in Political Science. This completely different subject allows me to bridge the gap between the technical and social science, which is why I am interested in ABM. I have experience in python, with particular interest in data science and machine learning. I have also done some work with agent-based modeling in my coursework, which has sparked my interest in this field. I am excited to contribute to Mesa and learn more about ABM through this experience.
+I am a Computer Application student with a minor in Political Science, bridging technical and social science perspectives. I have hands-on experience in Python with focus on data science and machine learning, plus coursework in agent-based modeling that sparked my commitment to this field.
 
 ## Why Mesa
 
-I am interested in contributing to Mesa because it bridges the gap between high-level social science theory and rigorous Pythonic implementation. While many ABM tools are "black boxes," Mesa’s integration with the standard Python data stack (NumPy, Pandas, Scipy) makes it the ideal environment for experimenting with AI-driven agent cognition. I specifically appreciate Mesa's recent move toward event-driven scheduling and modular space models, as these features are essential for building the realistic socio-political simulations I am passionate about. Even beyond GSoC, I want to be a part of the community that makes Mesa the primary tool for researchers to explore emergent human behavior.
+Mesa uniquely integrates rigorous Pythonic implementation with the standard data stack (NumPy, Pandas, SciPy), enabling reproducible ABM research. However, after studying the codebase, I identified specific gaps in the behavioral framework that motivated my GSoC proposal.
 
 ## What I want to learn
 
-I want to deepen my understanding of agent-based modeling by translating complex socio-political dynamics into computational logic. With my background in Political Science, I am specifically interested in how individual micro-behaviors - like voting or opinion exchange - emerge as macro-level social trends. Technically, I am eager to master the 'Mesa way' of software architecture. My interest in the Behavioral framework project (175 hrs) stems from a desire to reduce the friction modellers face when designing multi-agent interactions. I plan to use the Wolf-Sheep Predation model as a baseline to experiment with Needs-Based architectures, exploring how internal states like hunger or fear drive agent decision-making. Simultaneously, working on Reviving Mesa-examples (90 hrs) will allow me to help make complex models more accessible and better documented for other beginners.
+Through detailed code review, I discovered three friction points in multi-agent interactions:
+
+1. **Agent.step() lacks action queuing** — agents cannot maintain parallel or sequenced actions, limiting realistic behavior chains like "move → forage → report → rest."
+2. **mesa_signals provides only one-way events** — no request-reply pattern exists for negotiation or consensus-building between agents, critical for socio-political modeling.
+3. **MetaAgent groups cannot dynamically dissolve** — groups form but lack runtime condition-based disbanding, preventing realistic coalition dynamics.
+
+My 175-hour Behavioral Framework proposal directly addresses friction points 2 and 3 through: (a) a minimal, opt-in interaction protocol enabling two-way agent communication, and (b) enhanced MetaAgent lifecycle management for dynamic group dissolution. The 90-hour Mesa-examples work will document these patterns for other researchers.
 
 ## Where I want to go
 
-My goal with contributing to Mesa is to gain practical experience in open-source development and agent-based modeling. I aim to start by making small, meaningful contributions - such as fixing bugs, improving documentation, or adding simple example models. As I build confidence and familiarity with the codebase and community, I hope to gradually take on more complex tasks, like enhancing behavioral framework features by implementing and documenting BDI (Belief-Desire-Intention) patterns in social models. Ultimately, I want to bridge my CS and Political Science expertise to help make Mesa the most robust framework for modeling adaptive, "thinking" agents, contributing to its growth as a sustainable, community-driven project.
+I aim to contribute concrete, well-tested solutions to Mesa's behavioral toolkit, then establish myself as a maintainer for agent interaction patterns. My goal is making socio-political simulations tractable for researchers without engineering expertise.
+
