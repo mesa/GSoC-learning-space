@@ -1,70 +1,91 @@
-# Model 03 - Opinion Diffusion Network (Days 7-8)
+# Model 03: Opinion Diffusion Network
 
 ## Goal
 
-Show communication friction in the current Mesa signals/pub-sub layer for multi-agent network interactions.
+Expose communication friction in Mesa signals and pub-sub workflows for networked multi-agent interaction.
 
-## Model Summary
+## Model Setup
 
-- Each agent has an opinion value in [0.0, 1.0].
-- Agents live on a graph (Network discrete space).
+- Each agent has an opinion in the interval [0.0, 1.0].
+- Agents are placed on an Erdos-Renyi graph in Network discrete space.
 - Each step, every agent broadcasts its current opinion.
-- Neighboring agents update their opinion either:
-  - toward the received opinion (attraction), or
-  - away from it (repulsion / contrarian behavior).
+- Neighbors update opinion by attraction or contrarian repulsion.
+- Signaling uses Observable and ObservableList from mesa_signals.
 
-## What Was Implemented
+## Reproducible Run
 
-### 1) Agent state
+Parameters used:
 
-- Opinion is represented by an Observable field on OpinionAgent.
-- A broadcasts ObservableList is used as the signaling channel.
+- num_agents = 20
+- avg_degree = 5
+- learning_rate = 0.1
+- contrarian_probability = 0.2
+- rng = 42
+- steps = 40
 
-### 2) Subscription wiring
-
-- During model initialization, each agent subscribes to APPENDED events of each neighbor's broadcasts list.
-- Subscription handler reads message payload and updates the receiver's opinion.
-
-### 3) Broadcast on each step
-
-- On step, each agent appends a message object to broadcasts.
-- The append event triggers neighbor handlers through mesa_signals.
-
-## Why This Exposes Gaps
-
-This works, but the communication layer has friction for larger or more structured protocols:
-
-- No topic-based filtering:
-  every subscriber to the same ObservableList signal receives all messages for that signal.
-- No ordering guarantee:
-  update order depends on execution sequence and callback timing, not an explicit global message order.
-- No wildcard subscription for network topics/channels:
-  subscriptions are attached per observable on a specific emitter; there is no global topic wildcard across agents/channels for communication workflows.
-
-## What a Cleaner API Could Look Like
-
-Examples of APIs that would reduce manual wiring:
-
-- publish(topic="opinion", payload=...)
-- subscribe(topic="opinion", filter=..., handler=...)
-- wildcard subscribe(topic="opinion.*", handler=...)
-- ordered delivery modes (fifo, causal, timestamp-based)
-- acknowledgements / retry hooks for robust protocols
-
-## How to Run
+Run snippet:
 
 ~~~python
 from model import OpinionDiffusionModel
 
-m = OpinionDiffusionModel(num_agents=20, avg_degree=5, learning_rate=0.1)
-for _ in range(10):
-  m.step()
+m = OpinionDiffusionModel(
+    num_agents=20,
+    avg_degree=5,
+    learning_rate=0.1,
+    contrarian_probability=0.2,
+    rng=42,
+)
 
-print("Rounds:", m.round)
-print("Last summary:", m.history[-1])
+for _ in range(40):
+    m.step()
+
+print(m.history[-1])
 ~~~
 
-## Notes
+## Results Snapshot
 
-- Because updates are event-driven while agents are activated sequentially, opinions can change within the same round before all agents have broadcast.
-- This behavior is useful to illustrate the current absence of explicit message scheduling semantics.
+Observed final-row output:
+
+- round = 40
+- mean_opinion = 0.6046532054660158
+- min_opinion = 0.593236592275645
+- max_opinion = 0.6303230501768959
+
+Interpretation:
+
+- Opinions cluster tightly by step 40 under the selected parameters.
+- Mean shifts upward from randomized initialization due to local interaction dynamics.
+- Sequential activation plus event-driven callbacks can influence within-round update order.
+
+## Mesa Friction Point
+
+The signaling workflow is functional, but communication protocols require manual wiring:
+
+- subscriptions are emitter-specific and added neighbor by neighbor
+- there is no topic-level routing abstraction
+- ordering semantics are implicit rather than declared
+
+This increases complexity for larger communication designs.
+
+## Minimal API Idea
+
+An opt-in channel abstraction could provide:
+
+- publish(topic, payload)
+- subscribe(topic, filter, handler)
+- wildcard topics for grouped subscriptions
+- selectable delivery policy (for example fifo or timestamp-ordered)
+
+These primitives would reduce repetitive subscription code and make protocol intent explicit.
+
+## What I Learned
+
+- Reactive signals are powerful for local events but verbose for protocol-style communication.
+- Ordering assumptions should be explicit when model behavior depends on message timing.
+- Reproducible network runs help turn qualitative friction into concrete evidence.
+
+## Next Experiment
+
+- Add per-round buffering to compare synchronous versus immediate-delivery updates.
+- Measure message volume and handler cost as graph density increases.
+- Evaluate a topic-based wrapper over current signals without modifying core Mesa APIs.

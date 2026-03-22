@@ -2,67 +2,87 @@
 
 ## Goal
 
-This model exposes a friction point in Mesa when implementing a simple request-reply interaction:
+Expose friction in Mesa when implementing request-reply interactions between agents.
 
-- Buyer agent must send bids to the seller and the seller must decide a winner each round.
+## Model Setup
 
-## Setup
+- One Seller agent posts a reserve price every round.
+- Eight Buyer agents with random budgets submit bids.
+- Seller selects the highest valid bid and executes one sale per round.
+- Communication is implemented using a shared inbox workaround.
 
-- 1 `Seller` agent posts a reserve price each round
-- 5-10 `Buyer` agents with random budgets submit bids each round
-- The `Seller` accepts the highest valid bid, transform one item, then resets state for the next round.
+## Reproducible Run
 
-## What was implemented (workaround pattern)
+Parameters used:
 
-To implement request-reply, we used:
+- num_buyers = 8
+- seller_price = 40.0
+- rng = 42
+- steps = 30
 
-- Shared inbox on seller:
-  seller.inbox is a list where buyers append bid messages
-- Manual message object:
-  Bid is a custom data object (not a Mesa Agent)
-- Manual lifecycle:
-  seller reads inbox, picks winner, applies transfer, then clears inbox
+Run snippet:
 
-This is functional, but it is custom plumbing rather than first-class messaging.
-
-## Friction point observed in Mesa
-
-For this interaction style, Mesa currently lacks built-in APIs for:
-
-- Typed message passing between agents
-- Broadcast send to agent groups by type or filter
-- Request-reply semantics with acknowledgement or timeout
-- Mailbox delivery guarantees and ordering controls
-
-Because these are missing, interaction protocols are hand-written in each model.
-
-## What a clean API could look like
-
-A cleaner API might support primitives like:
-
-- send message:
-  buyer.send(to=seller, msg=Bid(amount=37.2))
-- broadcast:
-  seller.broadcast(to=Buyer, msg=AuctionOpened(price=40.0))
-- request-reply:
-  response = buyer.request(to=seller, msg=BidRequest(...), timeout=1.0)
-- inbox handling:
-  seller.on(Bid, handler=resolve_bid)
-- acknowledgement:
-  buyer.await_ack(message_id)
-
-With these primitives, auction logic would become protocol-focused, instead of manually managing list mailboxes.
-
-## Minimal run snippet
-
-You can run a short simulation from a Python shell:
-
+~~~python
 from model import MarketAuctionModel
 
-m = MarketAuctionModel(num_buyers=8, seller_price=40.0)
-for _ in range(10):
+m = MarketAuctionModel(num_buyers=8, seller_price=40.0, rng=42)
+for _ in range(30):
     m.step()
 
-print("Sold:", m.seller.items_sold)
-print("Revenue:", round(m.seller.total_revenue, 2))
-print("Last round:", m.round_log[-1])
+total_rounds = len(m.round_log)
+wins = sum(1 for r in m.round_log if r["winning_bid"] is not None)
+mean_win = (
+    sum(r["winning_bid"] for r in m.round_log if r["winning_bid"] is not None)
+    / max(1, wins)
+)
+print(total_rounds, wins, round(mean_win, 2), round(m.seller.total_revenue, 2))
+~~~
+
+## Results Snapshot
+
+Observed output:
+
+- total_rounds = 30
+- winning_rounds = 8
+- mean_winning_bid = 74.70
+- seller_total_revenue = 597.58
+
+Interpretation:
+
+- Market clears in a minority of rounds under the selected reserve-price setup.
+- High mean winning bid compared to reserve shows selective winning behavior.
+- The core auction logic works, but messaging is model-specific plumbing.
+
+## Mesa Friction Point
+
+The model requires custom communication scaffolding:
+
+- shared mutable inbox on Seller
+- custom Bid data object per protocol
+- manual read-process-clear lifecycle every round
+
+Mesa does not provide built-in request-reply primitives with acknowledgement or timeout semantics for this workflow.
+
+## Minimal API Idea
+
+An opt-in interaction layer could support:
+
+- send(to=..., msg=...)
+- broadcast(to=AgentType or filter, msg=...)
+- request(to=..., msg=..., timeout=...)
+- on(MessageType, handler=...)
+- await_ack(message_id)
+
+This would let model code focus on protocol behavior rather than mailbox mechanics.
+
+## What I Learned
+
+- Auction-style interactions are easy to express conceptually but verbose in current Mesa code.
+- Missing protocol primitives increase repeated boilerplate across models.
+- Reproducible runs make interaction claims stronger for proposal evaluation.
+
+## Next Experiment
+
+- Add typed message envelopes and explicit round timestamps.
+- Compare FIFO inbox processing versus priority-based bid resolution.
+- Evaluate whether interaction abstraction can be added without touching stable Agent APIs.
